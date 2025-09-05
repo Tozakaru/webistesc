@@ -1,0 +1,124 @@
+    /* Ruang untuk header & footer */
+    @page {
+        margin: 150px 30px 50px 30px;
+    }
+    body {
+        font-family: sans-serif;
+        font-size: 12px;
+    }
+
+    /* ===== Header fixed ===== */
+    .pdf-header {
+        position: fixed;
+        top: -135px;       /* ≈ -(margin-top - 15) */
+        left: 0;
+        right: 0;
+        height: 135px;     /* tinggi area header */
+    }
+
+    /* Tabel header tunggal (2 baris) */
+    .header-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+    .header-table td,
+    .header-table th {
+        border: 1px solid #000;
+    }
+
+    /* Baris 1 (logo | judul | Q) — hilangkan garis vertikal di dalam */
+    .header-top td {
+        border-bottom: none;   /* sudah ada */
+        border-left: none;     /* matikan garis kiri internal */
+        border-right: none;    /* matikan garis kanan internal */
+        vertical-align: middle;
+        padding: 4px 8px;
+    }
+    /* Jaga bingkai luar tetap ada */
+    .header-top td:first-child {
+        border-left: 1px solid #000;
+    }
+    .header-top td:last-child {
+        border-right: 1px solid #000;
+    }
+
+    .hdr-logo {
+        width: 65px;
+        text-align: left;
+    }
+    .hdr-logo img{
+        height: 40px; /* kecilkan tinggi logo */
+    }
+    .hdr-title {
+        text-align: center;
+        font-weight: bold;
+        font-size: 24px;
+        letter-spacing: 0.3px;
+    }
+    .hdr-q {
+        width: 65px;
+        text-align: right;
+        font-weight: bold;
+        font-size: 40px;
+        line-height: 40px;
+    }
+
+    /* Baris 2: kotak-kotak meta */
+    .header-meta td {
+        padding: 4px 6px;
+        font-size: 10px;
+        text-align: center;
+    }
+
+    /* Footer */
+    .pdf-footer {
+        position: fixed;
+        bottom: -35px;
+        left: 0;
+        right: 0;
+        height: 25px;
+        font-size: 10px;
+        color: #555;
+    }
+    .footer-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .footer-left {
+        text-align: left;
+    }
+    .footer-right {
+        text-align: right;
+    }
+    .pagenum:before {
+        content: counter(page);
+    }
+    .pagetotal:before {
+        content: counter(pages);
+    }
+
+    /* Konten */
+    h3 {
+        text-align: center;
+        margin: 0 0 10px 0;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    thead {
+        display: table-header-group; /* ulangi header tabel tiap halaman */
+    }
+    th,
+    td {
+        border: 1px solid #000;
+        padding: 5px;
+        text-align: center;
+    }
+    thead th {
+        background: #f7f7f7;
+    }
+    tr {
+        page-break-inside: avoid;
+    }

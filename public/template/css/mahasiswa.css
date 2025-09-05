@@ -1,0 +1,446 @@
+/* === Font Styling === */
+/* Mengatur font utama halaman dan teks dengan class .text-gray-800 */
+body,
+.text-gray-800 {
+  font-family: 'League Spartan', sans-serif;
+}
+
+/* === Table Styling === */
+/* Styling utama tabel custom */
+.custom-table {
+  border-radius: 12px; /* Membuat sudut tabel melengkung */
+  overflow: hidden; /* Menghindari elemen keluar dari tabel */
+  width: 100%; /* Full lebar */
+  border-collapse: collapse; /* Menghilangkan jarak antar border */
+}
+
+/* Header tabel dengan gradasi */
+.custom-table thead {
+  background: linear-gradient(to right, #0b1f3a, #1f3b70);
+  color: white;
+  text-align: left;
+}
+
+/* Sel tabel (header & body) */
+.custom-table th,
+.custom-table td {
+  text-align: left;
+  vertical-align: middle !important;
+  white-space: nowrap; /* Mencegah teks turun ke baris baru */
+  padding: 12px 15px;
+}
+
+/* Efek hover pada baris tabel */
+.custom-table tbody tr {
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.custom-table tbody tr:hover {
+  background-color: #c2d7f3; /* Warna hover selaras tema */
+  transform: scale(1.01); /* Sedikit membesar */
+}
+
+/* === Card & Button Styling === */
+/* Card standar */
+.card {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+/* Header card khusus (sesuai warna tema) */
+.card-header-custom {
+  background-color: #1f3b70 !important;
+  color: #ffffff !important;
+  font-weight: 600;
+  padding: 12px 20px;
+  border-radius: 8px 8px 0 0;
+  font-size: 16px;
+}
+
+/* Border highlight untuk card */
+.card-border-highlight {
+  border: 2px solid #1f3b70 !important;
+  border-radius: 10px;
+}
+
+/* Tombol kecil */
+.btn-sm {
+  font-size: 0.75rem;
+}
+
+/* Tombol dengan ikon */
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* === Table Responsive === */
+/* Membuat tabel bisa di-scroll horizontal */
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Pesan "tidak ada data" */
+.no-data {
+  padding: 2rem;
+  text-align: center;
+  font-style: italic;
+  color: #999;
+}
+
+/* === Sidebar Styling === */
+.sidebar {
+  background: linear-gradient(180deg, #0b1f3a, #1f3b70);
+  color: #ffffff;
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.sidebar .nav-item {
+  margin-bottom: 8px;
+}
+
+/* Link sidebar */
+.sidebar .nav-link {
+  border-radius: 8px;
+  font-weight: normal; /* Diubah dari bold ke normal */
+  padding: 10px 15px;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  transition: background 0.3s ease, transform 0.2s ease;
+}
+
+.sidebar .nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  transform: translateX(4px);
+}
+
+/* Link aktif */
+.sidebar .nav-link.active,
+.sidebar .nav-item.active > .nav-link {
+  background-color: rgba(255, 255, 255, 0.2);
+  font-weight: 600;
+  border-left: 4px solid #fff;
+}
+
+/* Teks brand sidebar */
+.sidebar .sidebar-brand-text {
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+/* Avatar user */
+.avatar {
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+/* === Navbar Styling === */
+.navbar-custom {
+  background: linear-gradient(to right, #0b1f3a, #1f3b70);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+}
+
+.navbar-custom .navbar-brand,
+.navbar-custom .nav-link,
+.navbar-custom .form-control {
+  color: #ffffff !important;
+}
+
+/* Input navbar */
+.navbar .form-control {
+  color: #ffffff !important;
+  background-color: #0d2c55 !important;
+  border: 1px solid #ffffff33;
+}
+
+.navbar .form-control::placeholder {
+  color: #ffffffaa !important;
+}
+
+.navbar .form-control:focus {
+  border-color: #4c8ed9;
+  outline: none;
+  box-shadow: 0 0 5px #4c8ed9aa;
+}
+
+/* Dropdown navbar */
+.navbar-custom .dropdown-menu {
+  background-color: #1f3b70;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.navbar-custom .dropdown-item {
+  color: #ffffff;
+}
+
+.navbar-custom .dropdown-item:hover,
+.navbar-custom .nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  transition: 0.3s ease;
+}
+
+/* Search Input tambahan di navbar */
+.navbar input[type="text"],
+.navbar input[type="search"] {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.navbar input::placeholder {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* === Responsive Adjustments === */
+@media (max-width: 768px) {
+  .d-sm-flex {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .table-responsive {
+    margin-top: 10px;
+  }
+
+  h1.h3 {
+    font-size: 2.5rem;
+  }
+
+  .btn {
+    font-size: 0.75rem;
+    padding: 6px 10px;
+  }
+
+  td .d-flex {
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-start !important;
+  }
+}
+
+/* === Animasi Dashboard === */
+/* Animasi fade-in */
+.fade-in {
+  animation: fadeIn 0.8s ease-in-out;
+}
+
+/* Animasi fade-in naik */
+.fade-in-up {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.6s ease forwards;
+}
+
+/* Delay animasi*/
+.fade-in-up[style*="animation-delay"] {
+  animation-delay: inherit;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===============================
+   STYLE UNTUK INVALID RUANGAN
+   =============================== */
+
+/* Wrapper kotak besar untuk halaman Invalid */
+.section-card-invalid {
+  border: 2px solid #ddd;
+  border-radius: 12px;
+}
+
+/* Card item invalid (tetap sama seperti sebelumnya) */
+.log-card-invalid {
+  border-left: 5px solid #f44336;
+  background-color: #ffebee;
+  border-radius: 10px;
+  padding: 15px 20px;
+  margin-bottom: 15px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  transition: 0.3s ease;
+}
+.log-card-invalid:hover { transform: scale(1.01); }
+
+.log-info-box {
+  background-color: transparent;
+  border: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  flex-wrap: wrap;
+  font-size: 17px;
+  color: #880e4f;
+  }
+
+  
+.log-info-item { flex: 1 1 auto; min-width: 200px; }
+
+
+.log-header-invalid {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    color: #b71c1c;
+}
+
+.log-body-invalid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 17px;
+    color: #880e4f;
+}
+
+.log-item-invalid {
+    flex: 1 1 45%;
+}
+
+@media (max-width: 768px) {
+    .log-item-invalid {
+        flex: 1 1 100%;
+    }
+}
+
+/* ===============================
+   STYLE UNTUK LOG RUANGAN
+   =============================== */
+.log-card {
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border: 2px solid #ddd;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    transition: 0.3s ease;
+    background-color: #f9f9f9;
+}
+
+.log-card:hover {
+    transform: scale(1.01);
+}
+
+.bg-masuk {
+    border-left: 5px solid #6cd6ff;
+    background-color: #e8faff;
+}
+
+.bg-sedang {
+    border-left: 5px solid #79e4b9;
+    background-color: #eafff3;
+}
+
+.bg-sudah {
+    border-left: 5px solid #f8b4b4;
+    background-color: #fff5f5;
+}
+
+.log-header {
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.log-header small {
+    font-size: 16px;
+    color: #555;
+}
+
+.log-body {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 17px;
+    margin-top: 10px;
+}
+
+.log-item {
+    flex: 1 1 45%;
+}
+
+.badge-status {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 15px;
+    font-weight: bold;
+}
+
+.badge-sedang {
+    background-color: #d4fcd4;
+    color: #0a7b0a;
+}
+
+.badge-sudah {
+    background-color: #ffe5e5;
+    color: #a10000;
+}
+
+@media (max-width: 768px) {
+    .log-item {
+        flex: 1 1 100%;
+    }
+}
+
+/* ===============================
+   STYLE UNTUK TOMBOL FILTER
+   =============================== */
+.btn-filter {
+    background-color: #6c757d !important; /* Abu-abu netral */
+    border-color: #6c757d !important;
+    color: #fff !important;
+    transition: all 0.3s ease;
+    margin-right: 8px;
+    border-radius: 25px;
+    padding: 8px 16px;
+    opacity: 0.8;
+}
+
+.btn-filter:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    opacity: 1;
+    background-color: #5a6268 !important;
+    border-color: #5a6268 !important;
+}
+
+.btn-filter.active {
+    font-weight: bold;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.25);
+    transform: translateY(-2px);
+    border: 2px solid #fff;
+    opacity: 1;
+}
+
+.btn-filter.active.btn-primary {
+    background-color: #6cd6ff !important;
+    border-color: #6cd6ff !important;
+    color: #fff !important;
+}
+
+.btn-filter.active.btn-success {
+    background-color: #f8b4b4 !important;
+    border-color: #f8b4b4 !important;
+    color: #a10000 !important;
+    font-weight: bold;
+}
+
+.btn-filter.active.btn-secondary {
+    background-color: #495057 !important;
+    border-color: #495057 !important;
+    color: #fff !important;
+}
