@@ -9,6 +9,7 @@ use App\Models\LogInvalid;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Response;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\DB;
 
 class LogAktivitasController extends Controller
 {
@@ -24,100 +25,89 @@ class LogAktivitasController extends Controller
 
     public function scanByRuangan(Request $request, $ruangan)
     {
-        $uid = $request->uid_rfid;
-        $reader = $request->reader;
-
+        $uid    = $request->uid_rfid;
+        $reader = strtolower($request->reader ?? '');
+    
         $mahasiswa = Mahasiswa::where('uid_rfid', $uid)->first();
         if (!$mahasiswa) {
             LogInvalid::create([
                 'uid_rfid' => $uid,
-                'reader' => $reader,
-                'waktu' => now(),
-                'ruangan' => $ruangan
+                'reader'   => $reader,
+                'waktu'    => now(),
+                'ruangan'  => $ruangan,
             ]);
-
             return response()->json([
                 'authorized' => false,
-                'message' => 'UID tidak dikenal'
+                'message'    => 'UID tidak dikenal',
             ]);
         }
-
-        $today = Carbon::today();
-        $log = LogAktivitas::where('mahasiswa_id', $mahasiswa->id)
-            ->where('ruangan', $ruangan)
-            ->whereDate('tanggal', $today)
-            ->first();
-
+    
+        $today = today();
+    
         if ($reader === 'masuk') {
-            if ($log) {
-                if ($log->waktu_masuk && $log->waktu_keluar) {
-                    return response()->json([
-                        'authorized' => true,
-                        'message' => 'Sudah mencatat masuk dan keluar hari ini'
-                    ]);
-                } elseif ($log->waktu_masuk) {
-                    return response()->json([
-                        'authorized' => true,
-                        'message' => 'Waktu masuk sudah tercatat sebelumnya',
-                    ]);
-                } else {
-                    $log->update(['waktu_masuk' => now()]);
-                    return response()->json([
-                        'authorized' => true,
-                        'message' => 'Waktu masuk tercatat',
-                        'status' => 'masuk'
-                    ]);
-                }
-            } else {
-                LogAktivitas::create([
-                    'mahasiswa_id' => $mahasiswa->id,
-                    'tanggal' => now(),
-                    'waktu_masuk' => now(),
-                    'ruangan' => $ruangan
-                ]);
-                return response()->json([
-                    'authorized' => true,
-                    'message' => 'Waktu masuk tercatat',
-                    'status' => 'masuk'
-                ]);
-            }
-        }
-
-        if ($reader === 'keluar') {
-            if (!$log) {
-                return response()->json([
-                    'authorized' => false,
-                    'message' => 'Belum ada catatan masuk, tidak bisa keluar'
-                ]);
-            }
-
-            if (!$log->waktu_masuk) {
-                return response()->json([
-                    'authorized' => false,
-                    'message' => 'Belum scan masuk, tidak bisa keluar'
-                ]);
-            }
-
-            if ($log->waktu_keluar) {
-                return response()->json([
-                    'authorized' => true,
-                    'message' => 'Sudah mencatat keluar hari ini'
-                ]);
-            }
-
-            $log->update(['waktu_keluar' => now()]);
+            // SELALU TERIMA: buat baris baru meskipun masih ada sesi terbuka
+            LogAktivitas::create([
+                'mahasiswa_id' => $mahasiswa->id,
+                'tanggal'      => $today,
+                'waktu_masuk'  => now(),
+                'ruangan'      => $ruangan,
+            ]);
+    
+            $sesiKe = LogAktivitas::where('mahasiswa_id', $mahasiswa->id)
+                ->where('ruangan', $ruangan)
+                ->whereDate('tanggal', $today)
+                ->count();
+    
             return response()->json([
                 'authorized' => true,
-                'message' => 'Waktu keluar tercatat',
-                'status' => 'keluar'
+                'message'    => 'Waktu masuk tercatat',
+                'status'     => 'masuk',
+                'sesi_ke'    => $sesiKe,
             ]);
         }
-
+    
+        if ($reader === 'keluar') {
+            // Kalau ada sesi terbuka (masuk!=null & keluar=null), pasangkan.
+            $openLog = LogAktivitas::where('mahasiswa_id', $mahasiswa->id)
+                ->where('ruangan', $ruangan)
+                ->whereDate('tanggal', $today)
+                ->whereNotNull('waktu_masuk')
+                ->whereNull('waktu_keluar')
+                ->latest('waktu_masuk')
+                ->first();
+    
+            if ($openLog) {
+                $openLog->update(['waktu_keluar' => now()]);
+                return response()->json([
+                    'authorized' => true,
+                    'message'    => 'Waktu keluar tercatat (dipasangkan dengan sesi terakhir)',
+                    'status'     => 'keluar',
+                    'paired'     => true,
+                ]);
+            }
+    
+            // TIDAK ADA sesi terbuka → tetap terima, catat keluar-saja
+            LogAktivitas::create([
+                'mahasiswa_id' => $mahasiswa->id,
+                'tanggal'      => $today,
+                'waktu_keluar' => now(),
+                'ruangan'      => $ruangan,
+            ]);
+    
+            return response()->json([
+                'authorized' => true,
+                'message'    => 'Waktu keluar tercatat (tanpa sesi masuk)',
+                'status'     => 'keluar',
+                'paired'     => false,
+            ]);
+        }
+    
         return response()->json([
             'authorized' => false,
-            'message' => 'Jenis reader tidak dikenali'
+            'message'    => 'Jenis reader tidak dikenali',
         ]);
     }
+      
 
     public function aktivitasInvalid()
     {
@@ -140,7 +130,9 @@ class LogAktivitasController extends Controller
             $query->whereNotNull('waktu_keluar');
         }
 
-        $logs = $query->orderByDesc('waktu_masuk')->paginate(5);
+        $logs = $query
+        ->orderByDesc(DB::raw('COALESCE(waktu_keluar, waktu_masuk)'))
+        ->paginate(5);
 
         return view('pages.logaktivitas.ruangan1', compact('logs'));
     }
@@ -160,7 +152,9 @@ class LogAktivitasController extends Controller
             $query->whereNotNull('waktu_keluar');
         }
 
-        $logs = $query->orderByDesc('waktu_masuk')->paginate(5);
+        $logs = $query
+        ->orderByDesc(DB::raw('COALESCE(waktu_keluar, waktu_masuk)'))
+        ->paginate(5);
 
         return view('pages.logaktivitas.ruangan2', compact('logs'));
     }
