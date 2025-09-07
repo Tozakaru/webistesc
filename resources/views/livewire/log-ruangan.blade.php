@@ -114,7 +114,7 @@
   {{-- Pagination --}}
   @if ($logs->lastPage() > 1)
     <div class="card-footer">
-      {{ $logs->onEachSide(1)->links('pagination::bootstrap-5') }}
+      {{ $logs->onEachSide(1)->links('livewire::bootstrap') }}
     </div>
   @endif
 </div>
