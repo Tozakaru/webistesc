@@ -13,7 +13,7 @@
   <div class="mb-4">
     <button class="btn btn-primary btn-filter {{ $filter==='masuk' ? 'active' : '' }}"
             wire:click="setFilter('masuk')">Log Masuk</button>
-    <button class="btn btn-success btn-filter {{ $filter==='keluar' ? 'active' : '' }}"
+    <button class="btn btn-danger btn-filter {{ $filter==='keluar' ? 'active' : '' }}"
             wire:click="setFilter('keluar')">Log Keluar</button>
     <button class="btn btn-secondary btn-filter {{ !$filter ? 'active' : '' }}"
             wire:click="setFilter(null)">Log Gabungan</button>
@@ -107,7 +107,7 @@
       </div>
     </div>
   @empty
-    <div class="alert alert-warning text-center">Tidak ada data log aktivitas.</div>
+    <div class="alert alert-warning text-center">Tidak ada data log aktivitas hari ini.</div>
   @endforelse
 
   {{-- Pagination --}}

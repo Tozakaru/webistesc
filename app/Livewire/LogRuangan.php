@@ -12,21 +12,14 @@ class LogRuangan extends Component
     use WithPagination;
 
     public string $ruangan = 'ruangan1';
-    public ?string $filter = null;         // 'masuk' | 'keluar' | null (= gabungan)
+    public ?string $filter = null;    // 'masuk' | 'keluar' | null (=gabungan)
     public int $perPage = 5;
     public string $tz = 'Asia/Makassar';
 
     protected $queryString = ['filter'];
 
-    public function updatedFilter()
-    {
-        $this->resetPage();
-    }
-
-    public function updatedRuangan()
-    {
-        $this->resetPage();
-    }
+    public function updatedFilter()  { $this->resetPage(); }
+    public function updatedRuangan() { $this->resetPage(); }
 
     public function setFilter(?string $f = null)
     {
@@ -35,16 +28,15 @@ class LogRuangan extends Component
 
     public function render()
     {
-        $todayLocal = Carbon::now($this->tz)->toDateString(); // 'YYYY-MM-DD'
+        $tz         = $this->tz;
+        $todayLocal = Carbon::now($tz)->toDateString(); // 'YYYY-MM-DD'
 
+        // === HANYA HARI INI (filter ke kolom 'tanggal') ===
         $query = LogAktivitas::with('mahasiswa')
             ->where('ruangan', $this->ruangan)
-            ->where(function ($q) use ($todayLocal) {
-                $q->whereDate('tanggal', $todayLocal)
-                  ->orWhereDate('waktu_masuk', $todayLocal)
-                  ->orWhereDate('waktu_keluar', $todayLocal);
-            });
+            ->whereDate('tanggal', $todayLocal);
 
+        // === FILTER TAB & URUTAN TERBARU DI ATAS ===
         if ($this->filter === 'masuk') {
             $query->whereNotNull('waktu_masuk')
                   ->orderByDesc('waktu_masuk');
@@ -52,7 +44,7 @@ class LogRuangan extends Component
             $query->whereNotNull('waktu_keluar')
                   ->orderByDesc('waktu_keluar');
         } else {
-            // Gabungan: event terbaru = waktu_keluar jika ada, kalau tidak waktu_masuk
+            // Gabungan: pakai event terakhir (keluar jika ada, jika tidak masuk)
             $query->orderByRaw('COALESCE(waktu_keluar, waktu_masuk) DESC')
                   ->orderByDesc('id'); // tie-breaker
         }
@@ -60,8 +52,11 @@ class LogRuangan extends Component
         $logs = $query->paginate($this->perPage);
 
         return view('livewire.log-ruangan', [
-            'logs'   => $logs,
-            'nowStr' => Carbon::now($this->tz)->format('d M Y, H:i') . ' WITA',
+            'logs'    => $logs,
+            'nowStr'  => Carbon::now($tz)->format('d M Y, H:i') . ' WITA',
+            'tz'      => $tz,
+            'ruangan' => $this->ruangan,
+            'filter'  => $this->filter,
         ]);
     }
 }
