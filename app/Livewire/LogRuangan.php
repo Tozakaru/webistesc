@@ -42,8 +42,7 @@ class LogRuangan extends Component
             ->where(function ($q) use ($todayLocal) {
                 $q->whereDate('tanggal', $todayLocal)
                   ->orWhereDate('waktu_masuk', $todayLocal)
-                  ->orWhereDate('waktu_keluar', $todayLocal)
-                  ->orWhereDate('created_at', $todayLocal);
+                  ->orWhereDate('waktu_keluar', $todayLocal);
             });
 
         if ($this->filter === 'masuk') {

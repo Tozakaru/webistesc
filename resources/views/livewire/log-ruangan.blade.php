@@ -1,5 +1,4 @@
-<div wire:poll.5s> {{-- auto refresh tiap 5 detik, ubah/hapus sesuai kebutuhan --}}
-
+<div wire:poll.5s>
   {{-- Header judul & jam --}}
   <div class="d-sm-flex align-items-center justify-content-between mb-4">
     <h1 class="h3 mb-0 text-gray-800">
@@ -10,36 +9,30 @@
     </div>
   </div>
 
-  {{-- Tombol Filter (tanpa reload page) --}}
+  {{-- Tombol Filter --}}
   <div class="mb-4">
     <button class="btn btn-primary btn-filter {{ $filter==='masuk' ? 'active' : '' }}"
             wire:click="setFilter('masuk')">Log Masuk</button>
     <button class="btn btn-success btn-filter {{ $filter==='keluar' ? 'active' : '' }}"
             wire:click="setFilter('keluar')">Log Keluar</button>
     <button class="btn btn-secondary btn-filter {{ !$filter ? 'active' : '' }}"
-            wire:click="setFilter">Log Gabungan</button>
+            wire:click="setFilter(null)">Log Gabungan</button>
   </div>
 
   {{-- Kartu Log --}}
   @forelse ($logs as $log)
     @php
-      // copy logic dari blade kamu
       if ($filter === 'masuk') {
-          $cardClass = 'bg-masuk';
-          $status = '-';
+          $cardClass = 'bg-masuk'; $status = '-';
       } elseif ($filter === 'keluar') {
-          $cardClass = 'bg-sudah';
-          $status = '-';
+          $cardClass = 'bg-sudah'; $status = '-';
       } else {
           if ($log->waktu_masuk && !$log->waktu_keluar) {
-              $status = 'Sedang di Kelas';
-              $cardClass = 'bg-masuk';
+              $status = 'Sedang di Kelas'; $cardClass = 'bg-masuk';
           } elseif ($log->waktu_masuk && $log->waktu_keluar) {
-              $status = 'Sudah Keluar';
-              $cardClass = 'bg-sudah';
+              $status = 'Sudah Keluar'; $cardClass = 'bg-sudah';
           } else {
-              $status = '-';
-              $cardClass = 'bg-masuk';
+              $status = '-'; $cardClass = 'bg-masuk';
           }
       }
 
@@ -53,7 +46,7 @@
       }
     @endphp
 
-    <div class="log-card {{ $cardClass }}">
+    <div class="log-card {{ $cardClass }}" wire:key="log-{{ $log->id }}">
       <div class="row">
         {{-- Kolom kiri --}}
         <div class="col-md-6 col-12">
@@ -64,9 +57,13 @@
           <div class="mt-2">
             @if (!$filter)
               @if ($status === 'Sudah Keluar')
-                <span class="badge-status badge-sudah"><i class="fas fa-sign-out-alt"></i> {{ $status }}</span>
+                <span class="badge-status badge-sudah">
+                  <i class="fas fa-sign-out-alt"></i> {{ $status }}
+                </span>
               @elseif ($status === 'Sedang di Kelas')
-                <span class="badge-status badge-sedang"><i class="fas fa-map-marker-alt"></i> {{ $status }}</span>
+                <span class="badge-status badge-sedang">
+                  <i class="fas fa-map-marker-alt"></i> {{ $status }}
+                </span>
               @endif
             @endif
           </div>
@@ -77,7 +74,8 @@
           <div class="log-body">
             @if ($filter !== 'keluar')
               <div class="log-item">
-                <i class="fas fa-sign-in-alt"></i> <strong>Masuk:</strong> {{ $log->waktu_masuk ?? '-' }}
+                <i class="fas fa-sign-in-alt"></i> <strong>Masuk:</strong>
+                {{ $log->waktu_masuk ? $log->waktu_masuk->timezone($tz)->format('H:i:s') : '-' }}
               </div>
             @endif
 
@@ -85,7 +83,7 @@
               <div class="log-item">
                 <i class="fas fa-sign-out-alt"></i> <strong>Keluar:</strong>
                 @if ($log->waktu_keluar)
-                  {{ $log->waktu_keluar }}
+                  {{ $log->waktu_keluar->timezone($tz)->format('H:i:s') }}
                 @elseif($filter === 'keluar')
                   Belum scan masuk
                 @else
@@ -101,7 +99,8 @@
             @endif
 
             <div class="log-item">
-              <i class="fas fa-calendar-alt"></i> <strong>Tanggal:</strong> {{ $log->tanggal }}
+              <i class="fas fa-calendar-alt"></i> <strong>Tanggal:</strong>
+              {{ $log->tanggal ? $log->tanggal->format('Y-m-d') : '-' }}
             </div>
           </div>
         </div>
