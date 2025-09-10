@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class LogAktivitas extends Model
 {
@@ -10,7 +11,13 @@ class LogAktivitas extends Model
     protected $guarded = [];
     public $timestamps = false;
 
-    public function mahasiswa()
+    protected $casts = [
+        'waktu_masuk'  => 'datetime',
+        'waktu_keluar' => 'datetime',
+        'tanggal'      => 'date',
+    ];
+
+    public function mahasiswa(): BelongsTo
     {
         return $this->belongsTo(Mahasiswa::class);
     }

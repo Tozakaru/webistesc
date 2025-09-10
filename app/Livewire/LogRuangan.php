@@ -11,15 +11,19 @@ class LogRuangan extends Component
 {
     use WithPagination;
 
-    public string $ruangan = 'ruangan1';   // dioper dari view/route
-    public ?string $filter = null;         // 'masuk' | 'keluar' | null (=gabungan)
+    public string $ruangan = 'ruangan1';
+    public ?string $filter = null;         // 'masuk' | 'keluar' | null (= gabungan)
     public int $perPage = 5;
     public string $tz = 'Asia/Makassar';
 
-    protected $queryString = ['filter'];   // opsional: biar URL simpan tab/filter
+    protected $queryString = ['filter'];
 
-    // Reset halaman saat filter berubah
     public function updatedFilter()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedRuangan()
     {
         $this->resetPage();
     }
@@ -31,24 +35,34 @@ class LogRuangan extends Component
 
     public function render()
     {
-        $today = Carbon::today($this->tz);
+        $todayLocal = Carbon::now($this->tz)->toDateString(); // 'YYYY-MM-DD'
 
         $query = LogAktivitas::with('mahasiswa')
             ->where('ruangan', $this->ruangan)
-            ->whereDate('tanggal', $today);
+            ->where(function ($q) use ($todayLocal) {
+                $q->whereDate('tanggal', $todayLocal)
+                  ->orWhereDate('waktu_masuk', $todayLocal)
+                  ->orWhereDate('waktu_keluar', $todayLocal)
+                  ->orWhereDate('created_at', $todayLocal);
+            });
 
         if ($this->filter === 'masuk') {
-            $query->whereNotNull('waktu_masuk');
+            $query->whereNotNull('waktu_masuk')
+                  ->orderByDesc('waktu_masuk');
         } elseif ($this->filter === 'keluar') {
-            $query->whereNotNull('waktu_keluar');
-        } // gabungan: tanpa tambahan
+            $query->whereNotNull('waktu_keluar')
+                  ->orderByDesc('waktu_keluar');
+        } else {
+            // Gabungan: event terbaru = waktu_keluar jika ada, kalau tidak waktu_masuk
+            $query->orderByRaw('COALESCE(waktu_keluar, waktu_masuk) DESC')
+                  ->orderByDesc('id'); // tie-breaker
+        }
 
-        $logs = $query->orderByDesc('waktu_masuk')->paginate($this->perPage);
+        $logs = $query->paginate($this->perPage);
 
         return view('livewire.log-ruangan', [
-            'logs' => $logs,
+            'logs'   => $logs,
             'nowStr' => Carbon::now($this->tz)->format('d M Y, H:i') . ' WITA',
         ]);
     }
 }
-
