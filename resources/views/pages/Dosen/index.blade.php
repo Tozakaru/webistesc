@@ -99,7 +99,7 @@
             </td>
           </tr>
 
-          @include('pages.dosen.confirmation-delete', ['item' => $item])
+          @include('pages.Dosen.confirmation-delete', ['item' => $item])
         @empty
           <tr>
             <td colspan="7" class="text-center">
