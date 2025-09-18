@@ -24,11 +24,9 @@
   <div class="alert alert-success">{{ session('ok') }}</div>
 @endif
 
-{{-- Marker error (CREATE) --}}
 @if($errors->any() && !session('edit_dosen_id'))
   <div id="modalCreateDosenErrorMarker" hidden></div>
 @endif
-{{-- Marker error (EDIT) --}}
 @if(session('edit_dosen_id'))
   <div id="modalEditDosenErrorMarker"
        data-id="{{ session('edit_dosen_id') }}"
@@ -101,7 +99,6 @@
             </td>
           </tr>
 
-          {{-- Modal konfirmasi hapus per item --}}
           @include('pages.dosen.confirmation-delete', ['item' => $item])
         @empty
           <tr>
