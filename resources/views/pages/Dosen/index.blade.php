@@ -119,8 +119,8 @@
 </div>
 
 {{-- === include MODALS === --}}
-@include('pages.dosen.create')
-@include('pages.dosen.edit')
+@include('pages.Dosen.create')
+@include('pages.Dosen.edit')
 
 @endsection
 
