@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use Livewire\Component;
 use App\Models\Mahasiswa;
+use App\Models\Dosen;
 use App\Models\LogAktivitas;
 use App\Models\LogInvalid;
 use App\Models\EspDevice;
@@ -24,12 +25,18 @@ class DashboardPage extends Component
         $nowWita = Carbon::now('Asia/Makassar');
         $today   = $nowWita->toDateString();
 
-        $totalMahasiswa   = Mahasiswa::count();
-        $jumlahMasuk      = LogAktivitas::whereDate('tanggal', $today)->whereNotNull('waktu_masuk')->count();
-        $jumlahKeluar     = LogAktivitas::whereDate('tanggal', $today)->whereNotNull('waktu_keluar')->count();
+        // === Pengguna Terdaftar (Mahasiswa + Dosen) ===
+        $penggunaTerdaftar = (int) Mahasiswa::count() + (int) Dosen::count();
+
+        // === Angka harian (log valid) ===
+        $jumlahMasuk  = LogAktivitas::whereDate('tanggal', $today)->whereNotNull('waktu_masuk')->count();
+        $jumlahKeluar = LogAktivitas::whereDate('tanggal', $today)->whereNotNull('waktu_keluar')->count();
+
+        // === Invalid harian ===
         $aktivitasInvalid = LogInvalid::whereDate('waktu', $today)->count();
 
-        $aktivitasTerbaru = LogAktivitas::with('mahasiswa')
+        // === Aktivitas Terbaru (ambil nama dari mahasiswa ATAU dosen) ===
+        $aktivitasTerbaru = LogAktivitas::with(['mahasiswa','dosen'])
             ->whereDate('tanggal', $today)
             ->orderByRaw('GREATEST(
                 IFNULL(TIME(waktu_masuk), "00:00:00"),
@@ -38,18 +45,37 @@ class DashboardPage extends Component
             ->limit(5)
             ->get()
             ->map(function ($log) {
-                $nama = $log->mahasiswa->nama ?? 'Tidak diketahui';
-                $fmtMasuk  = $log->waktu_masuk  ? Carbon::parse($log->waktu_masuk)->timezone('Asia/Makassar')->format('H:i') . ' WITA' : null;
-                $fmtKeluar = $log->waktu_keluar ? Carbon::parse($log->waktu_keluar)->timezone('Asia/Makassar')->format('H:i') . ' WITA' : null;
+                // Nama prioritas: mahasiswa -> dosen -> fallback
+                $nama = $log->mahasiswa->nama ?? $log->dosen->nama ?? 'Tidak diketahui';
+
+                $fmtMasuk  = $log->waktu_masuk
+                    ? Carbon::parse($log->waktu_masuk)->timezone('Asia/Makassar')->format('H:i') . ' WITA'
+                    : null;
+                $fmtKeluar = $log->waktu_keluar
+                    ? Carbon::parse($log->waktu_keluar)->timezone('Asia/Makassar')->format('H:i') . ' WITA'
+                    : null;
 
                 if ($log->waktu_masuk && (!$log->waktu_keluar || $log->waktu_masuk > $log->waktu_keluar)) {
-                    return (object)['nama'=>$nama,'jenis'=>'masuk','waktu'=>$fmtMasuk,'ruangan'=>$log->ruangan ?? null];
+                    return (object)[
+                        'nama'    => $nama,
+                        'jenis'   => 'masuk',
+                        'waktu'   => $fmtMasuk,
+                        'ruangan' => $log->ruangan ?? null
+                    ];
                 } elseif ($log->waktu_keluar) {
-                    return (object)['nama'=>$nama,'jenis'=>'keluar','waktu'=>$fmtKeluar,'ruangan'=>$log->ruangan ?? null];
+                    return (object)[
+                        'nama'    => $nama,
+                        'jenis'   => 'keluar',
+                        'waktu'   => $fmtKeluar,
+                        'ruangan' => $log->ruangan ?? null
+                    ];
                 }
                 return null;
-            })->filter()->values();
+            })
+            ->filter()
+            ->values();
 
+        // === Status ESP ===
         $kelas = ['SmartClass 1', 'SmartClass 2'];
         $statusEspKelas = [];
         foreach ($kelas as $namaKelas) {
@@ -60,7 +86,9 @@ class DashboardPage extends Component
             if ($device && $device->last_seen) {
                 $lastSeenCarbon = Carbon::parse($device->last_seen)->timezone('Asia/Makassar');
                 $lastSeen = $lastSeenCarbon->format('d M Y, H:i:s') . ' WITA';
-                if ($lastSeenCarbon->diffInMinutes(Carbon::now('Asia/Makassar')) <= 2) $status = 'Aktif';
+                if ($lastSeenCarbon->diffInMinutes(Carbon::now('Asia/Makassar')) <= 2) {
+                    $status = 'Aktif';
+                }
             }
 
             $statusEspKelas[] = [
@@ -71,7 +99,7 @@ class DashboardPage extends Component
         }
 
         return view('livewire.dashboard-page', compact(
-            'totalMahasiswa',
+            'penggunaTerdaftar',
             'jumlahMasuk',
             'jumlahKeluar',
             'aktivitasInvalid',

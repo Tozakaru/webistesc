@@ -5,6 +5,7 @@ namespace App\Livewire;
 use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\LogAktivitas;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class LogRuangan extends Component
@@ -29,14 +30,17 @@ class LogRuangan extends Component
     public function render()
     {
         $tz         = $this->tz;
+        // tanggal hari ini pakai zona lokal (kolom 'tanggal' bertipe DATE)
         $todayLocal = Carbon::now($tz)->toDateString(); // 'YYYY-MM-DD'
 
-        // === HANYA HARI INI (filter ke kolom 'tanggal') ===
-        $query = LogAktivitas::with('mahasiswa')
-            ->where('ruangan', $this->ruangan)
-            ->whereDate('tanggal', $todayLocal);
+        $query = LogAktivitas::with([
+                    'mahasiswa:id,nama,nim,kelas',
+                    'dosen:id,nama,nip',
+                ])
+                ->where('ruangan', $this->ruangan)
+                ->whereDate('tanggal', $todayLocal);
 
-        // === FILTER TAB & URUTAN TERBARU DI ATAS ===
+        // Filter & urutan terbaru
         if ($this->filter === 'masuk') {
             $query->whereNotNull('waktu_masuk')
                   ->orderByDesc('waktu_masuk');
@@ -44,9 +48,8 @@ class LogRuangan extends Component
             $query->whereNotNull('waktu_keluar')
                   ->orderByDesc('waktu_keluar');
         } else {
-            // Gabungan: pakai event terakhir (keluar jika ada, jika tidak masuk)
             $query->orderByRaw('COALESCE(waktu_keluar, waktu_masuk) DESC')
-                  ->orderByDesc('id'); // tie-breaker
+                  ->orderByDesc('id');
         }
 
         $logs = $query->paginate($this->perPage);

@@ -1,4 +1,5 @@
 <div wire:poll.10s>
+  {{-- Header --}}
   <div class="d-sm-flex align-items-center justify-content-between mb-4">
     <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
     <div class="text-muted small">
@@ -7,16 +8,17 @@
     </div>
   </div>
 
+  {{-- Row: 4 kartu ringkas --}}
   <div class="row">
     <div class="col-xl-3 col-md-6 mb-4 fade-in-up">
       <div class="card border-left-primary shadow h-100 py-2">
         <div class="card-body">
           <div class="row no-gutters align-items-center">
             <div class="col mr-2">
-              <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Mahasiswa Terdaftar</div>
-              <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $totalMahasiswa ?? 0 }}</div>
+              <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Pengguna Terdaftar</div>
+              <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $penggunaTerdaftar ?? 0 }}</div>
             </div>
-            <div class="col-auto"><i class="fas fa-user-graduate fa-2x text-gray-300"></i></div>
+            <div class="col-auto"><i class="fas fa-users fa-2x text-gray-300"></i></div>
           </div>
         </div>
       </div>
@@ -28,8 +30,8 @@
           <div class="row no-gutters align-items-center">
             <div class="col mr-2">
               <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Aktivitas Hari Ini</div>
-              <div class="h5 mb-0 font-weight-bold text-gray-800">Masuk: {{ $jumlahMasuk ?? 0 }}</div>
-              <div class="h5 mb-0 font-weight-bold text-gray-800">Keluar: {{ $jumlahKeluar ?? 0 }}</div>
+              <div class="h6 mb-0 font-weight-bold text-gray-800">Masuk: {{ $jumlahMasuk ?? 0 }}</div>
+              <div class="h6 mb-0 font-weight-bold text-gray-800">Keluar: {{ $jumlahKeluar ?? 0 }}</div>
             </div>
             <div class="col-auto"><i class="fas fa-door-open fa-2x text-gray-300"></i></div>
           </div>
@@ -69,14 +71,15 @@
         </div>
       </div>
     </div>
-  </div>
+  </div> {{-- /row kartu --}}
 
+  {{-- Row: Chart + Aktivitas Terbaru --}}
   <div class="row">
-    <div class="col-xl-8 col-lg-4 fade-in-up" style="animation-delay:0.4s;">
+    <div class="col-xl-8 col-lg-8 fade-in-up" style="animation-delay:0.4s;">
       <div class="card shadow mb-4 card-border-highlight">
         <div class="card-header card-header-custom py-3 d-flex flex-row align-items-center justify-content-between">
           <h6 class="m-0 font-weight-bold text-white">
-            <i class="fas fa-chart-line mr-2"></i>Statistik Validasi Masuk Mahasiswa
+            <i class="fas fa-chart-line mr-2"></i>Statistik Validasi Masuk
           </h6>
           <div class="dropdown no-arrow">
             <select class="form-control form-control-sm"
@@ -97,7 +100,7 @@
       </div>
     </div>
 
-    <div class="col-xl-4 col-lg-5 fade-in-up" style="animation-delay:0.5s;">
+    <div class="col-xl-4 col-lg-4 fade-in-up" style="animation-delay:0.5s;">
       <div class="card shadow mb-4 card-border-highlight">
         <div class="card-header card-header-custom py-3 d-flex flex-row align-items-center justify-content-between">
           <h6 class="m-0 font-weight-bold text-white"><i class="fas fa-history mr-2"></i>Aktivitas Terbaru</h6>
@@ -110,17 +113,23 @@
                 <div class="mr-3">
                   <div class="icon-circle
                     {{ $aktivitas->jenis == 'masuk' ? 'bg-success' : ($aktivitas->jenis == 'keluar' ? 'bg-danger' : 'bg-info') }}">
-                    <span class="text-white font-weight-bold">{{ strtoupper(substr($aktivitas->nama ?? 'N/A', 0, 2)) }}</span>
+                    @php
+                      $nm = trim($aktivitas->nama ?? 'N/A');
+                      $parts = preg_split('/\s+/u', $nm);
+                      $ini = mb_strtoupper(mb_substr($parts[0] ?? 'N', 0, 1) . mb_substr($parts[1] ?? '', 0, 1));
+                    @endphp
+                    <span class="text-white font-weight-bold">{{ $ini }}</span>
                   </div>
                 </div>
                 <div class="flex-grow-1">
                   <div class="small font-weight-bold text-gray-800">{{ $aktivitas->nama ?? 'Nama tidak tersedia' }}</div>
                   <div class="small text-muted">
-                    <i class="fas fa-{{ $aktivitas->jenis == 'masuk' ? 'sign-in-alt text-success' : 'sign-out-alt text-danger' }}"></i>
+                    @php $isMasuk = ($aktivitas->jenis ?? '') === 'masuk'; @endphp
+                    <i class="fas {{ $isMasuk ? 'fa-sign-in-alt text-success' : 'fa-sign-out-alt text-danger' }}"></i>
                     {{ ucfirst($aktivitas->jenis ?? 'aktivitas') }}
-                    @if(isset($aktivitas->ruangan)) - {{ $aktivitas->ruangan }} @endif
+                    @if(!empty($aktivitas->ruangan)) - {{ $aktivitas->ruangan }} @endif
                   </div>
-                  <div class="small text-muted"><i class="fas fa-clock"></i> {{ $aktivitas->waktu ?? 'Waktu tidak tersedia' }}</div>
+                  <div class="small text-muted"><i class="fas fa-clock"></i> {{ $aktivitas->waktu ?? '-' }}</div>
                 </div>
               </div>
             @endforeach
@@ -128,11 +137,11 @@
             <div class="text-center py-4">
               <i class="fas fa-clock text-muted mb-2" style="font-size: 48px;"></i>
               <p class="text-muted">Belum ada aktivitas hari ini</p>
-              <small class="text-muted">Aktivitas akan muncul setelah mahasiswa melakukan scan RFID</small>
+              <small class="text-muted">Aktivitas akan muncul setelah pengguna melakukan scan RFID</small>
             </div>
           @endif
         </div>
       </div>
     </div>
-  </div>
+  </div> 
 </div>

@@ -11,7 +11,6 @@ class LogAktivitas extends Model
     protected $guarded = [];
     public $timestamps = false;
 
-    // Agar sorting & formatting waktu akurat
     protected $casts = [
         'waktu_masuk'  => 'datetime',
         'waktu_keluar' => 'datetime',
@@ -20,7 +19,11 @@ class LogAktivitas extends Model
 
     public function mahasiswa(): BelongsTo
     {
-        // Ubah 'mahasiswa_id' jika foreign key berbeda
-        return $this->belongsTo(Mahasiswa::class);
+        return $this->belongsTo(Mahasiswa::class, 'mahasiswa_id');
+    }
+
+    public function dosen(): BelongsTo
+    {
+        return $this->belongsTo(Dosen::class, 'dosen_id');
     }
 }

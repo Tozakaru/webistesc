@@ -2,7 +2,7 @@
   {{-- Header judul & jam --}}
   <div class="d-sm-flex align-items-center justify-content-between mb-4">
     <h1 class="h3 mb-0 text-gray-800">
-      Log Aktivitas Mahasiswa - {{ \Illuminate\Support\Str::headline($ruangan) }}
+      Log Aktivitas — {{ \Illuminate\Support\Str::headline($ruangan) }}
     </h1>
     <div class="text-muted small">
       <i class="fas fa-clock"></i> {{ $nowStr }}
@@ -22,6 +22,7 @@
   {{-- Kartu Log --}}
   @forelse ($logs as $log)
     @php
+      // Kartu status/durasi
       if ($filter === 'masuk') {
           $cardClass = 'bg-masuk'; $status = '-';
       } elseif ($filter === 'keluar') {
@@ -44,6 +45,13 @@
                   ->format('%H:%I:%S');
           } catch (\Exception $e) { $durasi = '-'; }
       }
+
+      // Data flexible: Mahasiswa vs Dosen
+      $isMhs = !is_null($log->mahasiswa_id);
+      $role  = $isMhs ? 'Mahasiswa' : 'Dosen';
+      $nama  = $isMhs ? ($log->mahasiswa?->nama ?? '-') : ($log->dosen?->nama ?? '-');
+      $idno  = $isMhs ? ($log->mahasiswa?->nim  ?? '-') : ($log->dosen?->nip   ?? '-');
+      $kelas = $isMhs ? ($log->mahasiswa?->kelas ?? '-') : null;
     @endphp
 
     <div class="log-card {{ $cardClass }}" wire:key="log-{{ $log->id }}">
@@ -51,8 +59,15 @@
         {{-- Kolom kiri --}}
         <div class="col-md-6 col-12">
           <div class="log-header">
-            {{ $log->mahasiswa->nama }}<br>
-            <small>{{ $log->mahasiswa->nim }} | Kelas: {{ $log->mahasiswa->kelas }}</small>
+            {{ $nama }}
+            <span class="badge bg-light text-dark ms-2">{{ $role }}</span><br>
+            <small>
+              @if ($isMhs)
+                NIM: {{ $idno }} | Kelas: {{ $kelas }}
+              @else
+                NIP: {{ $idno }}
+              @endif
+            </small>
           </div>
           <div class="mt-2">
             @if (!$filter)
