@@ -4,7 +4,7 @@
             (object)['title'=>'Dashboard','path'=>'dashboard','icon'=>'fas fa-fw fa-tachometer-alt'],
             (object)['title'=>'Log Aktivitas','path'=>'logaktivitas','icon'=>'fas fa-list fa-sm'],
             (object)['title'=>'Aktivitas Invalid','path'=>'aktivitas-invalid','icon'=>'fas fa-exclamation-triangle'],
-            (object)['title'=>'Mahasiswa','path'=>'mahasiswa','icon'=>'fas fa-solid fa-table'], // <- akan jadi collapse
+            (object)['title'=>'Mahasiswa','path'=>'mahasiswa','icon'=>'fas fa-solid fa-table'], // collapse Data Pengguna
             (object)['title'=>'Rekapan Aktivitas','path'=>'rekapanaktivitas','icon'=>'fas fa-solid fa-folder'],
             (object)['title'=>'Daftar Akun','path'=>'account-list','icon'=>'fas fa-solid fa-user'],
             (object)['title'=>'Force Open','path'=>'force-open','icon'=>'fas fa-exclamation-triangle'],
@@ -21,11 +21,13 @@
     }
 
     // STATE untuk Log Aktivitas (ruangan)
-    $isLogRuangan = request()->routeIs('log.ruangan');
-    $ruanganParam = $isLogRuangan ? request()->route('ruangan') : null;
+    $isLogRuangan = request()->routeIs('log.ruangan1') || request()->routeIs('log.ruangan2');
 
-    // STATE untuk collapse "Mahasiswa" (kini: Data Pengguna)
+    // STATE untuk collapse "Mahasiswa" (alias Data Pengguna)
     $isPeople = request()->is('mahasiswa*') || request()->is('dosen*');
+
+    // Ambil daftar device untuk modal (code + nama_kelas)
+    $devices = \App\Models\EspDevice::orderBy('code')->get(['code','nama_kelas']);
 @endphp
 
 <link href="https://fonts.googleapis.com/css2?family=League+Spartan&display=swap" rel="stylesheet">
@@ -49,30 +51,26 @@
                        href="#"
                        data-bs-toggle="collapse"
                        data-bs-target="#collapseLogAktivitas"
-                       aria-expanded="{{ ($isLogRuangan || request()->is('logaktivitas*')) ? 'true' : 'false' }}"
+                       aria-expanded="{{ $isLogRuangan ? 'true' : 'false' }}"
                        aria-controls="collapseLogAktivitas">
                         <i class="{{ $menu->icon }}"></i>
                         <span>{{ $menu->title }}</span>
                     </a>
 
                     <div id="collapseLogAktivitas"
-                         class="collapse {{ ($isLogRuangan || request()->is('logaktivitas*')) ? 'show' : '' }}"
+                         class="collapse {{ $isLogRuangan ? 'show' : '' }}"
                          aria-labelledby="headingLogAktivitas"
                          data-bs-parent="#accordionSidebar">
                         <div class="bg-white py-2 collapse-inner rounded">
                             <h6 class="collapse-header">Pilih Ruangan:</h6>
 
-                            <a class="collapse-item
-                                      {{ ($isLogRuangan && $ruanganParam==='ruangan1') ? 'active' : '' }}
-                                      {{ request()->is('logaktivitas/ruangan1') ? 'active' : '' }}"
-                               href="{{ route('log.ruangan', ['ruangan'=>'ruangan1']) }}">
+                            <a class="collapse-item {{ request()->routeIs('log.ruangan1') ? 'active' : '' }}"
+                               href="{{ route('log.ruangan1') }}">
                                 SmartClass 1
                             </a>
 
-                            <a class="collapse-item
-                                      {{ ($isLogRuangan && $ruanganParam==='ruangan2') ? 'active' : '' }}
-                                      {{ request()->is('logaktivitas/ruangan2') ? 'active' : '' }}"
-                               href="{{ route('log.ruangan', ['ruangan'=>'ruangan2']) }}">
+                            <a class="collapse-item {{ request()->routeIs('log.ruangan2') ? 'active' : '' }}"
+                               href="{{ route('log.ruangan2') }}">
                                 SmartClass 2
                             </a>
                         </div>
@@ -82,7 +80,7 @@
                 <hr class="sidebar-divider">
 
             @elseif ($menu->title === 'Rekapan Aktivitas')
-                {{-- REKAP (single link) --}}
+                {{-- REKAP --}}
                 <li class="nav-item {{ isMenuActive($menu->path) }}">
                     <a class="nav-link" href="/{{ $menu->path }}">
                         <i class="{{ $menu->icon }}"></i>
@@ -93,7 +91,7 @@
                 <hr class="sidebar-divider">
 
             @elseif ($menu->title === 'Mahasiswa')
-                {{-- MAHASISWA → dijadikan collapse: Data Mahasiswa & Data Dosen --}}
+                {{-- MAHASISWA → collapse Data Mahasiswa & Data Dosen --}}
                 <li class="nav-item">
                     <a class="nav-link collapsed"
                        href="#"
@@ -157,7 +155,7 @@
     </div>
 </ul>
 
-{{-- ===== Modal Force Open (punyamu) ===== --}}
+{{-- Modal Force Open (dinamis dari esp_devices) --}}
 <div class="modal fade" id="forceOpenModal" tabindex="-1" aria-labelledby="forceOpenLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content border-0 shadow-lg rounded-3">
@@ -166,33 +164,53 @@
           <i class="fas fa-door-open fa-lg"></i>
         </div>
         <h5 id="forceOpenLabel" class="fw-bold mb-2">Konfirmasi Paksa Buka Pintu</h5>
-        <p class="text-muted mb-4" style="line-height:1.5">
-          Anda yakin ingin membuka pintu secara paksa?
-          <br/>Tindakan ini akan dicatat dalam log sistem.
+        <p class="text-muted mb-4">
+          Anda yakin ingin membuka pintu secara paksa?<br/>
+          Tindakan ini akan dicatat dalam log sistem.
         </p>
 
         <form method="POST" action="{{ route('force-open.execute') }}" id="forceOpenForm" class="mb-2">
           @csrf
+
+          {{-- Pilih device (kirimkan "code" ke controller) --}}
           <div class="mb-3">
             <label class="form-label fw-semibold">Pilih SmartClass</label>
-            <div class="d-flex gap-4 justify-content-center">
-              <div class="form-check">
-                <input class="form-check-input" type="radio" name="ruangan" id="r1" value="ruangan1" checked>
-                <label class="form-check-label" for="r1">SmartClass 1</label>
-              </div>
-              <div class="form-check">
-                <input class="form-check-input" type="radio" name="ruangan" id="r2" value="ruangan2">
-                <label class="form-check-label" for="r2">SmartClass 2</label>
-              </div>
+            <div class="d-flex flex-wrap gap-4 justify-content-center">
+              @forelse($devices as $i => $dev)
+                <div class="form-check">
+                  <input class="form-check-input"
+                         type="radio"
+                         name="ruangan"
+                         id="dev-{{ $dev->code }}"
+                         value="{{ $dev->code }}"
+                         {{ $i === 0 ? 'checked' : '' }}>
+                  <label class="form-check-label" for="dev-{{ $dev->code }}">
+                    {{ $dev->nama_kelas }}
+                  </label>
+                </div>
+              @empty
+                <div class="text-danger small">
+                  Tidak ada device terdaftar. Tambahkan di menu admin terlebih dahulu.
+                </div>
+              @endforelse
             </div>
+
+            @error('ruangan')
+              <div class="text-danger small mt-2">{{ $message }}</div>
+            @enderror
           </div>
 
           <div class="d-flex justify-content-center gap-2">
             <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Batal</button>
-            <button type="submit" class="btn btn-danger px-4">Ya, Buka Pintu</button>
+            <button type="submit" class="btn btn-danger px-4" id="forceOpenSubmit">Ya, Buka Pintu</button>
           </div>
         </form>
 
+        @if (session('success'))
+          <div class="alert alert-success mt-3 mb-0 py-2 px-3">
+            {{ session('success') }}
+          </div>
+        @endif
       </div>
     </div>
   </div>
@@ -202,3 +220,17 @@
   .force-box{ width:56px;height:56px;border:2px solid #ff6b6b;border-radius:14px; }
   .force-box i{ color:#ff6b6b; }
 </style>
+
+{{-- optional: cegah double-submit --}}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const form = document.getElementById('forceOpenForm');
+  const btn  = document.getElementById('forceOpenSubmit');
+  if (form && btn) {
+    form.addEventListener('submit', function () {
+      btn.disabled = true;
+      btn.innerText = 'Mengirim...';
+    });
+  }
+});
+</script>

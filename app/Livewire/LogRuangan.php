@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use Livewire\Component;
 use Livewire\WithPagination;
+use App\Models\EspDevice;
 use App\Models\LogAktivitas;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -12,54 +13,62 @@ class LogRuangan extends Component
 {
     use WithPagination;
 
-    public string $ruangan = 'ruangan1';
-    public ?string $filter = null;    // 'masuk' | 'keluar' | null (=gabungan)
-    public int $perPage = 5;
+    protected $paginationTheme = 'bootstrap';
+
+    // input dari route/page
+    public string $ruangan;      // akan diisi "SmartClass 1/2" untuk header
+    public string $deviceCode;   // "ruangan1" | "ruangan2"
+
+    // state internal
+    public int $deviceId;
+    public ?string $filter = null;   // 'masuk' | 'keluar' | null
     public string $tz = 'Asia/Makassar';
 
-    protected $queryString = ['filter'];
-
-    public function updatedFilter()  { $this->resetPage(); }
-    public function updatedRuangan() { $this->resetPage(); }
-
-    public function setFilter(?string $f = null)
+    // dipanggil dari parent page: <livewire:log-ruangan :ruangan-code="$ruangan" />
+    public function mount(string $ruanganCode)
     {
-        $this->filter = $f;
+        // ruanganCode dari route adalah slug "ruangan1"/"ruangan2"
+        $device = EspDevice::where('code', $ruanganCode)
+            ->orWhere('nama_kelas', $ruanganCode) // fallback kalau ada yang kirim "SmartClass 1"
+            ->firstOrFail();
+
+        $this->deviceId   = (int) $device->id;
+        $this->deviceCode = $device->code;
+        $this->ruangan    = $device->nama_kelas; // untuk judul tampilan
+    }
+
+    public function setFilter($value = null)
+    {
+        $this->filter = $value ?: null;
+        $this->resetPage();
+    }
+
+    public function getNowStrProperty(): string
+    {
+        return now($this->tz)->format('d M Y, H:i') . ' WITA';
     }
 
     public function render()
     {
-        $tz         = $this->tz;
-        // tanggal hari ini pakai zona lokal (kolom 'tanggal' bertipe DATE)
-        $todayLocal = Carbon::now($tz)->toDateString(); // 'YYYY-MM-DD'
+        $today = Carbon::today();
 
-        $query = LogAktivitas::with([
-                    'mahasiswa:id,nama,nim,kelas',
-                    'dosen:id,nama,nip',
-                ])
-                ->where('ruangan', $this->ruangan)
-                ->whereDate('tanggal', $todayLocal);
+        $query = LogAktivitas::with(['mahasiswa','dosen'])
+            ->where('esp_device_id', $this->deviceId)
+            ->whereDate('tanggal', $today);
 
-        // Filter & urutan terbaru
-        if ($this->filter === 'masuk') {
-            $query->whereNotNull('waktu_masuk')
-                  ->orderByDesc('waktu_masuk');
-        } elseif ($this->filter === 'keluar') {
-            $query->whereNotNull('waktu_keluar')
-                  ->orderByDesc('waktu_keluar');
-        } else {
-            $query->orderByRaw('COALESCE(waktu_keluar, waktu_masuk) DESC')
-                  ->orderByDesc('id');
-        }
+        if ($this->filter === 'masuk')  $query->whereNotNull('waktu_masuk');
+        if ($this->filter === 'keluar') $query->whereNotNull('waktu_keluar');
 
-        $logs = $query->paginate($this->perPage);
+        $logs = $query
+            ->orderByDesc(DB::raw('COALESCE(waktu_keluar, waktu_masuk)'))
+            ->paginate(5);
 
         return view('livewire.log-ruangan', [
-            'logs'    => $logs,
-            'nowStr'  => Carbon::now($tz)->format('d M Y, H:i') . ' WITA',
-            'tz'      => $tz,
-            'ruangan' => $this->ruangan,
-            'filter'  => $this->filter,
+            'logs'   => $logs,
+            'ruangan'=> $this->ruangan,
+            'tz'     => $this->tz,
+            'nowStr' => $this->nowStr,
+            'filter' => $this->filter,
         ]);
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Mahasiswa;
 use App\Models\Dosen;
+use App\Models\EspDevice;
 use App\Models\LogAktivitas;
 use App\Models\LogInvalid;
 use Carbon\Carbon;
@@ -14,9 +15,12 @@ use Illuminate\Support\Facades\DB;
 
 class LogAktivitasController extends Controller
 {
-    /* ==========================
-     * SCAN ENDPOINTS (ESP32)
-     * ========================== */
+    private function resolveDeviceOrFail(string $code): EspDevice
+    {
+        $device = EspDevice::where('code', $code)->first();
+        abort_unless($device, 404, "Perangkat $code tidak ditemukan");
+        return $device;
+    }
 
     public function scanRuangan1(Request $request)
     {
@@ -28,34 +32,27 @@ class LogAktivitasController extends Controller
         return $this->scanByRuangan($request, 'ruangan2');
     }
 
-    /**
-     * Terima scan RFID + reader ("masuk"/"keluar") dan catat untuk Mahasiswa atau Dosen.
-     * - Jika UID milik Mahasiswa => simpan di kolom mahasiswa_id
-     * - Jika UID milik Dosen     => simpan di kolom dosen_id
-     * - Jika tidak dikenal       => catat ke LogInvalid
-     */
-    public function scanByRuangan(Request $request, $ruangan)
+    public function scanByRuangan(Request $request, string $ruangan)
     {
+        $device = $this->resolveDeviceOrFail($ruangan);
         $uid    = $request->uid_rfid;
-        $reader = strtolower($request->reader ?? ''); // expected: 'masuk' | 'keluar'
+        $reader = strtolower($request->reader ?? ''); // 'masuk' | 'keluar'
         $today  = today();
 
-        /* ===== 1) Cek MAHASISWA lebih dulu ===== */
         $mahasiswa = Mahasiswa::where('uid_rfid', $uid)->first();
         if ($mahasiswa) {
             if ($reader === 'masuk') {
-                // Selalu terima masuk (multi-sesi diperbolehkan)
                 LogAktivitas::create([
-                    'mahasiswa_id' => $mahasiswa->id,
-                    'tanggal'      => $today,
-                    'waktu_masuk'  => now(),
-                    'ruangan'      => $ruangan,
+                    'mahasiswa_id'  => $mahasiswa->id,
+                    'tanggal'       => $today,
+                    'waktu_masuk'   => now(),
+                    'esp_device_id' => $device->id,
                 ]);
 
                 $sesiKe = LogAktivitas::where('mahasiswa_id', $mahasiswa->id)
-                            ->where('ruangan', $ruangan)
-                            ->whereDate('tanggal', $today)
-                            ->count();
+                    ->where('esp_device_id', $device->id)
+                    ->whereDate('tanggal', $today)
+                    ->count();
 
                 return response()->json([
                     'authorized' => true,
@@ -68,9 +65,8 @@ class LogAktivitasController extends Controller
             }
 
             if ($reader === 'keluar') {
-                // Jika ada sesi terbuka di hari & ruangan yang sama, pasangkan keluar
                 $openLog = LogAktivitas::where('mahasiswa_id', $mahasiswa->id)
-                    ->where('ruangan', $ruangan)
+                    ->where('esp_device_id', $device->id)
                     ->whereDate('tanggal', $today)
                     ->whereNotNull('waktu_masuk')
                     ->whereNull('waktu_keluar')
@@ -89,12 +85,11 @@ class LogAktivitasController extends Controller
                     ]);
                 }
 
-                // Tidak ada sesi terbuka → tetap catat keluar-saja
                 LogAktivitas::create([
-                    'mahasiswa_id' => $mahasiswa->id,
-                    'tanggal'      => $today,
-                    'waktu_keluar' => now(),
-                    'ruangan'      => $ruangan,
+                    'mahasiswa_id'  => $mahasiswa->id,
+                    'tanggal'       => $today,
+                    'waktu_keluar'  => now(),
+                    'esp_device_id' => $device->id,
                 ]);
 
                 return response()->json([
@@ -113,21 +108,20 @@ class LogAktivitasController extends Controller
             ], 422);
         }
 
-        /* ===== 2) Jika bukan mahasiswa, cek DOSEN ===== */
         $dosen = Dosen::where('uid_rfid', $uid)->first();
         if ($dosen) {
             if ($reader === 'masuk') {
                 LogAktivitas::create([
-                    'dosen_id'    => $dosen->id,
-                    'tanggal'     => $today,
-                    'waktu_masuk' => now(),
-                    'ruangan'     => $ruangan,
+                    'dosen_id'      => $dosen->id,
+                    'tanggal'       => $today,
+                    'waktu_masuk'   => now(),
+                    'esp_device_id' => $device->id,
                 ]);
 
                 $sesiKe = LogAktivitas::where('dosen_id', $dosen->id)
-                            ->where('ruangan', $ruangan)
-                            ->whereDate('tanggal', $today)
-                            ->count();
+                    ->where('esp_device_id', $device->id)
+                    ->whereDate('tanggal', $today)
+                    ->count();
 
                 return response()->json([
                     'authorized' => true,
@@ -141,7 +135,7 @@ class LogAktivitasController extends Controller
 
             if ($reader === 'keluar') {
                 $openLog = LogAktivitas::where('dosen_id', $dosen->id)
-                    ->where('ruangan', $ruangan)
+                    ->where('esp_device_id', $device->id)
                     ->whereDate('tanggal', $today)
                     ->whereNotNull('waktu_masuk')
                     ->whereNull('waktu_keluar')
@@ -161,10 +155,10 @@ class LogAktivitasController extends Controller
                 }
 
                 LogAktivitas::create([
-                    'dosen_id'    => $dosen->id,
-                    'tanggal'     => $today,
-                    'waktu_keluar'=> now(),
-                    'ruangan'     => $ruangan,
+                    'dosen_id'      => $dosen->id,
+                    'tanggal'       => $today,
+                    'waktu_keluar'  => now(),
+                    'esp_device_id' => $device->id,
                 ]);
 
                 return response()->json([
@@ -183,12 +177,10 @@ class LogAktivitasController extends Controller
             ], 422);
         }
 
-        /* ===== 3) Bukan Mahasiswa & bukan Dosen => INVALID ===== */
         LogInvalid::create([
-            'uid_rfid' => $uid,
-            'reader'   => $reader,
-            'waktu'    => now(),
-            'ruangan'  => $ruangan,
+            'uid_rfid'      => $uid,
+            'waktu'         => now(),
+            'esp_device_id' => $device->id,
         ]);
 
         return response()->json([
@@ -197,28 +189,31 @@ class LogAktivitasController extends Controller
         ], 404);
     }
 
-    /* ==========================
-     * HALAMAN & REKAP
-     * ========================== */
-
     public function aktivitasInvalid()
     {
         return view('pages.logaktivitas.invalid');
     }
 
-    /**
-     * Versi list log harian untuk ruangan1.
-     * Catatan: Kalau halaman kamu sekarang pakai Livewire "log-ruangan",
-     * method ini bisa tetap dipakai untuk halaman non-Livewire.
-     */
     public function ruangan1(Request $request)
+    {
+        $device = $this->resolveDeviceOrFail('ruangan1');
+        return $this->listHarianByDevice($request, $device);
+    }
+
+    public function ruangan2(Request $request)
+    {
+        $device = $this->resolveDeviceOrFail('ruangan2');
+        return $this->listHarianByDevice($request, $device);
+    }
+
+    private function listHarianByDevice(Request $request, EspDevice $device)
     {
         $filter = $request->filter; // 'masuk' | 'keluar' | null
         $today  = Carbon::today();
 
         $query = LogAktivitas::with(['mahasiswa','dosen'])
-                    ->where('ruangan', 'ruangan1')
-                    ->whereDate('tanggal', $today);
+            ->where('esp_device_id', $device->id)
+            ->whereDate('tanggal', $today);
 
         if ($filter === 'masuk')  $query->whereNotNull('waktu_masuk');
         if ($filter === 'keluar') $query->whereNotNull('waktu_keluar');
@@ -227,29 +222,13 @@ class LogAktivitasController extends Controller
             ->orderByDesc(DB::raw('COALESCE(waktu_keluar, waktu_masuk)'))
             ->paginate(5);
 
-        return view('pages.logaktivitas.ruangan1', compact('logs'));
-    }
-
-    /**
-     * Versi list log harian untuk ruangan2.
-     */
-    public function ruangan2(Request $request)
-    {
-        $filter = $request->filter;
-        $today  = Carbon::today();
-
-        $query = LogAktivitas::with(['mahasiswa','dosen'])
-                    ->where('ruangan', 'ruangan2')
-                    ->whereDate('tanggal', $today);
-
-        if ($filter === 'masuk')  $query->whereNotNull('waktu_masuk');
-        if ($filter === 'keluar') $query->whereNotNull('waktu_keluar');
-
-        $logs = $query
-            ->orderByDesc(DB::raw('COALESCE(waktu_keluar, waktu_masuk)'))
-            ->paginate(5);
-
-        return view('pages.logaktivitas.ruangan2', compact('logs'));
+        return view('pages.logaktivitas.ruangan', [
+            'logs'    => $logs,
+            'ruangan' => $device->nama_kelas, // untuk judul tampilan
+            'tz'      => 'Asia/Makassar',
+            'nowStr'  => now('Asia/Makassar')->format('d M Y, H:i') . ' WITA',
+            'filter'  => $filter,
+        ]);
     }
 
     public function rekapan(Request $request)
@@ -258,13 +237,13 @@ class LogAktivitasController extends Controller
         $end     = $request->input('end_date');
         $role    = $request->input('role', 'all'); // 'all' | 'mahasiswa' | 'dosen'
         $person  = $request->input('person');      // 'm:ID' | 'd:ID' | null
-    
+
         $mhsList = Mahasiswa::orderBy('nama')->get(['id','nama','nim']);
         $dsnList = Dosen::orderBy('nama')->get(['id','nama','nip']);
-    
+
         $showTable = $start && $end;
         $logs = collect();
-    
+
         if ($showTable) {
             $request->validate([
                 'start_date' => ['required','date'],
@@ -272,8 +251,8 @@ class LogAktivitasController extends Controller
                 'role'       => ['nullable','in:all,mahasiswa,dosen'],
                 'person'     => ['nullable','regex:/^(m:\d+|d:\d+)$/'],
             ]);
-    
-            $logs = LogAktivitas::with(['mahasiswa','dosen'])
+
+            $logs = LogAktivitas::with(['mahasiswa','dosen','device'])
                 ->whereBetween('tanggal', [$start, $end])
                 ->when($role === 'mahasiswa', fn($q) => $q->whereNotNull('mahasiswa_id'))
                 ->when($role === 'dosen',     fn($q) => $q->whereNotNull('dosen_id'))
@@ -286,21 +265,21 @@ class LogAktivitasController extends Controller
                 ->paginate(25)
                 ->withQueryString();
         }
-    
+
         return view('pages.logaktivitas.rekapan', compact('logs','showTable','mhsList','dsnList'));
     }
-    
+
     public function exportCsv(Request $request)
     {
         $bulan      = $request->bulan;
         $tahun      = (int) $request->tahun;
         $minggu     = $request->minggu ? (int) $request->minggu : null;
-    
+
         $startParam = $request->start_date;
         $endParam   = $request->end_date;
         $role       = $request->input('role','all');
         $person     = $request->input('person');
-    
+
         if ($startParam && $endParam) {
             $periodStart = Carbon::parse($startParam)->startOfDay();
             $periodEnd   = Carbon::parse($endParam)->endOfDay();
@@ -313,8 +292,8 @@ class LogAktivitasController extends Controller
                 $periodEnd   = Carbon::createFromDate($tahun, 12, 31)->endOfYear();
             }
         }
-    
-        $logsQuery = LogAktivitas::with(['mahasiswa','dosen'])
+
+        $logsQuery = LogAktivitas::with(['mahasiswa','dosen','device'])
             ->whereBetween('tanggal', [$periodStart->toDateString(), $periodEnd->toDateString()])
             ->when($role === 'mahasiswa', fn($q) => $q->whereNotNull('mahasiswa_id'))
             ->when($role === 'dosen',     fn($q) => $q->whereNotNull('dosen_id'))
@@ -324,33 +303,33 @@ class LogAktivitasController extends Controller
                     if ($m[1] === 'd') $query->where('dosen_id',     (int)$m[2]);
                 }
             });
-    
+
         $logs = $logsQuery->orderBy('tanggal')->get();
-    
+
         if ($minggu && !($startParam && $endParam) && $bulan) {
             $logs = $logs->filter(fn($log) => Carbon::parse($log->tanggal)->weekOfMonth == $minggu);
         }
-    
+
         $filename = 'log_aktivitas'
                   . ($startParam ? '_mingguan' : ($bulan ? '_bulanan' : '_tahunan'))
                   . '_' . now()->format('Ymd_His') . '.csv';
-    
+
         $headers = [
             'Content-Type'        => 'text/csv; charset=UTF-8',
             'Content-Disposition' => "attachment; filename=\"$filename\"",
         ];
-    
+
         $callback = function () use ($logs) {
             $handle = fopen('php://output', 'w');
             fwrite($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
             fputcsv($handle, ['Role','Nama','NIM/NIP','Tanggal','Waktu Masuk','Waktu Keluar'], ';');
-    
+
             foreach ($logs as $log) {
                 $isMhs = !is_null($log->mahasiswa_id);
                 $role  = $isMhs ? 'Mahasiswa' : 'Dosen';
                 $nama  = $isMhs ? ($log->mahasiswa->nama ?? '-') : ($log->dosen->nama ?? '-');
                 $idno  = $isMhs ? ($log->mahasiswa->nim  ?? '-') : ($log->dosen->nip   ?? '-');
-    
+
                 fputcsv($handle, [
                     $role, $nama, $idno,
                     Carbon::parse($log->tanggal)->format('d/m/Y'),
@@ -359,21 +338,21 @@ class LogAktivitasController extends Controller
             }
             fclose($handle);
         };
-    
+
         return Response::stream($callback, 200, $headers);
     }
-    
+
     public function exportPdf(Request $request)
     {
         $bulan      = $request->bulan;
         $tahun      = (int) $request->tahun;
         $minggu     = $request->minggu ? (int) $request->minggu : null;
-    
+
         $startParam = $request->start_date;
         $endParam   = $request->end_date;
         $role       = $request->input('role','all');
         $person     = $request->input('person');
-    
+
         if ($startParam && $endParam) {
             $periodStart = Carbon::parse($startParam)->startOfDay();
             $periodEnd   = Carbon::parse($endParam)->endOfDay();
@@ -386,8 +365,8 @@ class LogAktivitasController extends Controller
                 $periodEnd   = Carbon::createFromDate($tahun, 12, 31)->endOfYear();
             }
         }
-    
-        $logsQuery = LogAktivitas::with(['mahasiswa','dosen'])
+
+        $logsQuery = LogAktivitas::with(['mahasiswa','dosen','device'])
             ->whereBetween('tanggal', [$periodStart->toDateString(), $periodEnd->toDateString()])
             ->when($role === 'mahasiswa', fn($q) => $q->whereNotNull('mahasiswa_id'))
             ->when($role === 'dosen',     fn($q) => $q->whereNotNull('dosen_id'))
@@ -397,13 +376,13 @@ class LogAktivitasController extends Controller
                     if ($m[1] === 'd') $query->where('dosen_id',     (int)$m[2]);
                 }
             });
-    
+
         $logs = $logsQuery->orderBy('tanggal')->get();
-    
+
         if ($minggu && !($startParam && $endParam) && $bulan) {
             $logs = $logs->filter(fn($log) => Carbon::parse($log->tanggal)->weekOfMonth == $minggu);
         }
-    
+
         $meta = [
             'formulir'    => 'FORM-QA-LOG-AKT',
             'kode'        => 'FM-198 sd.A rev:0',
@@ -412,7 +391,7 @@ class LogAktivitasController extends Controller
             'update'      => '0',
             'updated_at'  => '00-00-0000',
         ];
-    
+
         if ($startParam && $endParam) {
             $judulPeriode = Carbon::parse($startParam)->format('d M Y') . ' – ' . Carbon::parse($endParam)->format('d M Y');
         } elseif ($bulan) {
@@ -421,27 +400,26 @@ class LogAktivitasController extends Controller
         } else {
             $judulPeriode = "Januari–Desember $tahun";
         }
-    
+
         if ($role !== 'all') $judulPeriode .= ' — ' . ucfirst($role);
         if ($person && preg_match('/^(m|d):(\d+)$/', $person, $m)) {
             if ($m[1] === 'm') { $mm = Mahasiswa::find((int)$m[2]); if ($mm) $judulPeriode .= " — {$mm->nama} ({$mm->nim})"; }
             else { $dd = Dosen::find((int)$m[2]); if ($dd) $judulPeriode .= " — {$dd->nama} ({$dd->nip})"; }
         }
-    
+
         $logoPath = public_path('template/img/logo polimdo2.png');
-    
+
         $pdf = Pdf::loadView('pages.logaktivitas.pdf', [
-                    'logs'         => $logs,
-                    'judulPeriode' => $judulPeriode,
-                    'meta'         => $meta,
-                    'logoPath'     => $logoPath,
-                ])->setPaper('A4','portrait');
-    
+            'logs'         => $logs,
+            'judulPeriode' => $judulPeriode,
+            'meta'         => $meta,
+            'logoPath'     => $logoPath,
+        ])->setPaper('A4', 'portrait');
+
         $namaFile = 'log_aktivitas'
                   . ($startParam ? '_mingguan' : ($bulan ? '_bulanan' : '_tahunan'))
                   . '.pdf';
-    
+
         return $pdf->download($namaFile);
     }
-     
 }

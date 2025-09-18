@@ -22,31 +22,23 @@
   {{-- Kartu Log --}}
   @forelse ($logs as $log)
     @php
-      // Kartu status/durasi
-      if ($filter === 'masuk') {
-          $cardClass = 'bg-masuk'; $status = '-';
-      } elseif ($filter === 'keluar') {
-          $cardClass = 'bg-sudah'; $status = '-';
-      } else {
-          if ($log->waktu_masuk && !$log->waktu_keluar) {
-              $status = 'Sedang di Kelas'; $cardClass = 'bg-masuk';
-          } elseif ($log->waktu_masuk && $log->waktu_keluar) {
-              $status = 'Sudah Keluar'; $cardClass = 'bg-sudah';
-          } else {
-              $status = '-'; $cardClass = 'bg-masuk';
-          }
+      if ($filter === 'masuk') { $cardClass = 'bg-masuk'; $status = '-'; }
+      elseif ($filter === 'keluar') { $cardClass = 'bg-sudah'; $status = '-'; }
+      else {
+        if ($log->waktu_masuk && !$log->waktu_keluar) { $status = 'Sedang di Kelas'; $cardClass = 'bg-masuk'; }
+        elseif ($log->waktu_masuk && $log->waktu_keluar) { $status = 'Sudah Keluar'; $cardClass = 'bg-sudah'; }
+        else { $status = '-'; $cardClass = 'bg-masuk'; }
       }
 
       $durasi = '-';
       if ($log->waktu_masuk && $log->waktu_keluar) {
-          try {
-              $durasi = \Carbon\Carbon::parse($log->waktu_masuk)
-                  ->diff(\Carbon\Carbon::parse($log->waktu_keluar))
-                  ->format('%H:%I:%S');
-          } catch (\Exception $e) { $durasi = '-'; }
+        try {
+          $durasi = \Carbon\Carbon::parse($log->waktu_masuk)
+              ->diff(\Carbon\Carbon::parse($log->waktu_keluar))
+              ->format('%H:%I:%S');
+        } catch (\Exception $e) { $durasi = '-'; }
       }
 
-      // Data flexible: Mahasiswa vs Dosen
       $isMhs = !is_null($log->mahasiswa_id);
       $role  = $isMhs ? 'Mahasiswa' : 'Dosen';
       $nama  = $isMhs ? ($log->mahasiswa?->nama ?? '-') : ($log->dosen?->nama ?? '-');
@@ -56,7 +48,6 @@
 
     <div class="log-card {{ $cardClass }}" wire:key="log-{{ $log->id }}">
       <div class="row">
-        {{-- Kolom kiri --}}
         <div class="col-md-6 col-12">
           <div class="log-header">
             {{ $nama }}
@@ -84,13 +75,12 @@
           </div>
         </div>
 
-        {{-- Kolom kanan --}}
         <div class="col-md-6 col-12">
           <div class="log-body">
             @if ($filter !== 'keluar')
               <div class="log-item">
                 <i class="fas fa-sign-in-alt"></i> <strong>Masuk:</strong>
-                {{ $log->waktu_masuk ? $log->waktu_masuk->timezone($tz)->format('H:i:s') : '-' }}
+                {{ $log->waktu_masuk ? \Carbon\Carbon::parse($log->waktu_masuk)->timezone($tz)->format('H:i:s') : '-' }}
               </div>
             @endif
 
@@ -98,7 +88,7 @@
               <div class="log-item">
                 <i class="fas fa-sign-out-alt"></i> <strong>Keluar:</strong>
                 @if ($log->waktu_keluar)
-                  {{ $log->waktu_keluar->timezone($tz)->format('H:i:s') }}
+                  {{ \Carbon\Carbon::parse($log->waktu_keluar)->timezone($tz)->format('H:i:s') }}
                 @elseif($filter === 'keluar')
                   Belum scan masuk
                 @else
@@ -115,7 +105,7 @@
 
             <div class="log-item">
               <i class="fas fa-calendar-alt"></i> <strong>Tanggal:</strong>
-              {{ $log->tanggal ? $log->tanggal->format('Y-m-d') : '-' }}
+              {{ $log->tanggal ? \Carbon\Carbon::parse($log->tanggal)->format('Y-m-d') : '-' }}
             </div>
           </div>
         </div>

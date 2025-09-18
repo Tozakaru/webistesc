@@ -26,4 +26,16 @@ class LogAktivitas extends Model
     {
         return $this->belongsTo(Dosen::class, 'dosen_id');
     }
+
+    public function device(): BelongsTo
+    {
+        return $this->belongsTo(EspDevice::class, 'esp_device_id', 'id');
+    }
+
+    public function getRuanganAttribute(): string
+    {
+        return optional($this->device)->nama_kelas
+            ?? optional($this->device)->code
+            ?? '-';
+    }
 }

@@ -24,17 +24,15 @@ class EspDeviceController extends Controller
         $namaKelas  = $data['nama_kelas'];
         $deviceCode = $this->mapDeviceCode($namaKelas); // ruangan1/ruangan2
 
-        // Update status device
         EspDevice::updateOrCreate(
             ['nama_kelas' => $namaKelas],
             ['last_seen'  => $now]
         );
 
-        // ===== Requeue hanya untuk command NON-FORCE_OPEN =====
         DB::table('esp_commands')
             ->where('device_code', $deviceCode)
             ->where('status', 'sent')
-            ->where('command', '!=', 'FORCE_OPEN') // <— cegah FORCE_OPEN ngulang
+            ->where('command', '!=', 'FORCE_OPEN')
             ->where('sent_at', '<', $now->copy()->subSeconds(10))
             ->where(function ($q) {
                 $q->whereNull('retry_count')->orWhere('retry_count', '<', 3);
