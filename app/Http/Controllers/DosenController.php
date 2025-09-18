@@ -22,7 +22,7 @@ class DosenController extends Controller
                     ->paginate(10)
                     ->withQueryString();
 
-        return view('pages.dosen.index', compact('dosens'));
+        return view('pages.Dosen.index', compact('dosens'));
     }
 
     // Simpan dari modal "Tambah"
